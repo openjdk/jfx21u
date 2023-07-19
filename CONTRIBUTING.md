@@ -1,7 +1,7 @@
-Contributing to OpenJFX 20 Updates
+Contributing to OpenJFX 21 Updates
 ==================================
 
-The OpenJFX 20 Updates repository is _not_ accepting new contributions. If you are looking to contribute to OpenJFX, please visit [openjdk/jfx](https://github.com/openjdk/jfx) instead.
+The OpenJFX 21 Updates repository is _not_ accepting new contributions. If you are looking to contribute to OpenJFX, please visit [openjdk/jfx](https://github.com/openjdk/jfx) instead.
 
 Important bug fixes that have already been fixed in the mainline can be backported with prior approval. New fixes should first go into the mainline, and then can be considered for backporting. Approval from one of the project leads is required prior to creating the PR or integrating the fix.
 

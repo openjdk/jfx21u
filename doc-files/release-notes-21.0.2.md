@@ -24,3 +24,11 @@ Issue key|Summary|Subcomponent
 [JDK-8315958](https://bugs.openjdk.org/browse/JDK-8315958)|Missing range checks in GlassPasteboard|window-toolkit
 [JDK-8319066](https://bugs.openjdk.org/browse/JDK-8319066)|Application window not always activated in macOS 14 Sonoma|window-toolkit
 [JDK-8319669](https://bugs.openjdk.org/browse/JDK-8319669)|[macos14] Running any JavaFX app prints Secure coding warning|window-toolkit
+
+## List of Security fixes
+
+Issue key|Summary|Subcomponent
+---------|-------|------------
+JDK-8313048 (not public)|Better Glyph handling|graphics
+JDK-8313105 (not public)|Improved media framing|media
+JDK-8313056 (not public)|General enhancements of Glass|window-toolkit

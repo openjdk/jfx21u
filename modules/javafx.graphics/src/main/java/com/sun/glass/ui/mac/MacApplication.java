@@ -60,6 +60,8 @@ final class MacApplication extends Application implements InvokeLaterDispatcher.
     private boolean isTaskbarApplication = false;
     private final InvokeLaterDispatcher invokeLaterDispatcher;
 
+    private static native int _openURI(String uri);
+
     MacApplication() {
         // Embedded in SWT, with shared event thread
         @SuppressWarnings("removal")
@@ -388,4 +390,9 @@ final class MacApplication extends Application implements InvokeLaterDispatcher.
 
     @Override
     protected native int _isKeyLocked(int keyCode);
+
+    @Override
+    protected void _showDocument(String uri) {
+        _openURI(uri);
+    }
 }

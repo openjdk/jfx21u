@@ -688,6 +688,8 @@ public abstract class Application {
         return null;
     }
 
+    protected abstract void _showDocument(final String uri);
+
     protected boolean _supportsInputMethods() {
         // Overridden in subclasses
         return false;
@@ -767,5 +769,9 @@ public abstract class Application {
             default:
                 return Optional.empty();
         }
+    }
+
+    public void showDocument(String uri) {
+        _showDocument(uri);
     }
 }

@@ -62,6 +62,8 @@ final class GtkApplication extends Application implements
             "WARNING: A command line option tried to select an invalid GTK library version.";
     private static final String GTK3_FALLBACK_WARNING = "WARNING: The GTK 3 library will be used instead.";
 
+    private static native int _openURI(String uri);
+
     static  {
         @SuppressWarnings("removal")
         String gtkVersion = AccessController.doPrivileged((PrivilegedAction<String>)
@@ -438,6 +440,11 @@ final class GtkApplication extends Application implements
     @Override
     protected File staticCommonDialogs_showFolderChooser(Window owner, String folder, String title) {
         return GtkCommonDialogs.showFolderChooser(owner, folder, title);
+    }
+
+    @Override
+    protected void _showDocument(String uri) {
+        _openURI(uri);
     }
 
     @Override

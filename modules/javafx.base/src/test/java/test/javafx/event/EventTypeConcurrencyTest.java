@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,8 @@ public class EventTypeConcurrencyTest {
     @Test
     public void concurrentInitialization() {
         int N = 1_000;
-        try (var executor = Executors.newCachedThreadPool()) {
+        try {
+            var executor = Executors.newCachedThreadPool();
             try {
                 ArrayList<Callable<Object>> runs = new ArrayList<>(N);
                 for (int i = 0; i < N; i++) {
@@ -59,6 +60,8 @@ public class EventTypeConcurrencyTest {
             } catch (Throwable e) {
                 fail(e);
             }
+        }  catch (Throwable e) {
+            fail(e);
         }
     }
 }

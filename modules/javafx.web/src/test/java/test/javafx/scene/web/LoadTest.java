@@ -181,10 +181,10 @@ public class LoadTest extends TestBase {
         loadContent(html);
         // loadContnet without protocol , should not fire js alert
         // need another test cases for valid alert (testLoadContentWithInlineScript which test in script loadContent)
-        assertEquals("", result.toString(), "Unexpected result");
-        assertEquals(SUCCEEDED, getLoadState(), "Unexpected load state");
-        assertEquals("", webEngine.getLocation(), "Unexpected location");
-        assertNotNull(webEngine.getDocument(), "Document is null");
+        assertEquals("Unexpected result", "", result.toString());
+        assertEquals("Unexpected load state", SUCCEEDED, getLoadState());
+        assertEquals("Unexpected location", "", webEngine.getLocation());
+        assertNotNull("Document is null", webEngine.getDocument());
     }
 
     @Test

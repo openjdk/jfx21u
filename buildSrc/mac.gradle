@@ -189,8 +189,7 @@ MAC.glass.nativeSource = [file("${project("graphics").projectDir}/src/main/nativ
 MAC.glass.compiler = compiler
 MAC.glass.ccFlags = [ccFlags,
     "-DMACOS_MIN_VERSION_MAJOR=$macOSMinVersionMajor",
-    "-DMACOS_MIN_VERSION_MINOR=$macOSMinVersionMinor",
-    "-Werror"].flatten()
+    "-DMACOS_MIN_VERSION_MINOR=$macOSMinVersionMinor"].flatten()
 MAC.glass.linker = linker
 MAC.glass.linkFlags = [linkFlags].flatten()
 MAC.glass.lib = "glass"

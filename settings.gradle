@@ -45,3 +45,14 @@ if (buildClosed) {
 
 include 'apps'
 
+plugins {
+  id "com.google.cloud.artifactregistry.gradle-plugin" version "2.2.5"
+}
+
+dependencyResolutionManagement {
+    repositories {
+        maven {
+            url 'artifactregistry://us-west1-maven.pkg.dev/PROJECT_ID/REPOSITORY_ID'
+        }
+    }
+}

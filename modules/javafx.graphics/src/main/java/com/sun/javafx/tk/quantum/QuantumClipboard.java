@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,8 @@ import java.net.SocketPermission;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.security.AccessControlContext;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -318,7 +320,16 @@ final class QuantumClipboard implements TKClipboard {
                                     Thread.currentThread().getContextClassLoader());
                         }
                     };
-                    data = in.readObject();
+                    @SuppressWarnings("removal")
+                    boolean deserializeObjGraphDND = AccessController.doPrivileged(
+                            (PrivilegedAction<Boolean>) () -> Boolean.parseBoolean(
+                            System.getProperty("javafx.dnd.deserializeObjectGraph", "false"))
+                    );
+                    if (deserializeObjGraphDND) {
+                        data = in.readObject();
+                    } else {
+                        // ignore , just return the ByteBuffer if not enabled
+                    }
                 } catch (IOException e) {
                     // ignore, just return the ByteBuffer if we cannot parse it
                 } catch (ClassNotFoundException e) {

@@ -1523,6 +1523,11 @@ public class FXMLLoader {
                 }
 
                 String extension = source.substring(i + 1);
+
+                if (extension.toLowerCase(Locale.ROOT).equals("js") && ALLOW_JAVASCRIPT == false) {
+                    throw constructLoadException("JavaScript script engine is disabled.");
+                }
+
                 ScriptEngine engine;
                 final ClassLoader cl = getClassLoader();
                 if (scriptEngine != null && scriptEngine.getFactory().getExtensions().contains(extension)) {
@@ -1542,6 +1547,19 @@ public class FXMLLoader {
                 if (engine == null) {
                     throw constructLoadException("Unable to locate scripting engine for"
                         + " extension " + extension + ".");
+                }
+
+                // Additionally check the script engine type when ALLOW_JAVASCRIPT is false.
+                // It is a second level check to ensure that -
+                //    - a Nashorn script engine does not get created OR
+                //    - a javascript engine does not get created
+                String engineName = engine.getFactory().getEngineName();
+                String languageName = engine.getFactory().getLanguageName();
+                if (ALLOW_JAVASCRIPT == false) {
+                    if (engineName.toLowerCase(Locale.ROOT).contains("nashorn") ||
+                        isLanguageJavaScript(languageName)) {
+                        throw constructLoadException("JavaScript script engine is disabled.");
+                    }
                 }
 
                 try {
@@ -2814,13 +2832,18 @@ public class FXMLLoader {
             scriptEngine = scriptEngineManager.getEngineByName(language);
         }
 
-        // Additionally check the script engine type.
-        // It is a second level check to ensure that a Nashorn script engine does not get created
-        // when ALLOW_JAVASCRIPT is false.
+        // Additionally check the script engine type when ALLOW_JAVASCRIPT is false.
+        // It is a second level check to ensure that -
+        //    - a Nashorn script engine does not get created OR
+        //    - a javascript engine does not get created
         if (scriptEngine != null) {
             String engineName = scriptEngine.getFactory().getEngineName();
-            if (engineName.toLowerCase(Locale.ROOT).contains("nashorn") && ALLOW_JAVASCRIPT == false) {
-               throw constructLoadException("JavaScript script engine is disabled.");
+            String languageName = scriptEngine.getFactory().getLanguageName();
+            if (ALLOW_JAVASCRIPT == false) {
+                if (engineName.toLowerCase(Locale.ROOT).contains("nashorn") ||
+                    isLanguageJavaScript(languageName)) {
+                    throw constructLoadException("JavaScript script engine is disabled.");
+                }
             }
         }
     }

@@ -770,10 +770,15 @@ g_variant_type_info_get (const GVariantType *type)
 
   type_char = g_variant_type_peek_string (type)[0];
 
+#ifndef GSTREAMER_LITE
   if (type_char == G_VARIANT_TYPE_INFO_CHAR_MAYBE ||
       type_char == G_VARIANT_TYPE_INFO_CHAR_ARRAY ||
       type_char == G_VARIANT_TYPE_INFO_CHAR_TUPLE ||
       type_char == G_VARIANT_TYPE_INFO_CHAR_DICT_ENTRY)
+#else // GSTREAMER_LITE
+  if (type_char == G_VARIANT_TYPE_INFO_CHAR_MAYBE ||
+      type_char == G_VARIANT_TYPE_INFO_CHAR_ARRAY)
+#endif // GSTREAMER_LITE
     {
       GVariantTypeInfo *info;
       gchar *type_string;

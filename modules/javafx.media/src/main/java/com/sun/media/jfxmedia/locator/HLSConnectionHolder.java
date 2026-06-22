@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -272,6 +272,28 @@ final class HLSConnectionHolder extends ConnectionHolder {
                 sendHeader = true;
             }
         }
+    }
+
+    // Returns absolute URI for segment media file or extension playlist.
+    // Only HTTP/HTTPS protocols are supported. For other protocols exception
+    // will be thrown.
+    // Relative URI will be resolved against playlist.
+    static String resolveURI(String uri, URI playlistURI)
+            throws URISyntaxException, MalformedURLException {
+        URI segmentURI = new URI(uri);
+        if (segmentURI.isAbsolute()) {
+            if (segmentURI.getScheme().equalsIgnoreCase("http") ||
+                    segmentURI.getScheme().equalsIgnoreCase("https")) {
+                return segmentURI.toString();
+            }
+        } else {
+            return playlistURI.resolve(segmentURI).toString();
+        }
+
+        MediaUtils.error(HLSConnectionHolder.class, MediaError.ERROR_MEDIA_INVALID.code(),
+                "Unsupported segment URI: " + uri, null);
+
+        return null;
     }
 
     private static String stripParameters(String mediaFile) {
@@ -694,11 +716,11 @@ final class HLSConnectionHolder extends ConnectionHolder {
 
         private URI getPlaylistURI() throws URISyntaxException, MalformedURLException {
             String location = playlistsLocations.get(infoIndex);
-            if (location.startsWith("http://") || location.startsWith("https://")) {
-                return new URI(location);
-            } else {
-                return new URI(playlistURI.toURL().toString().substring(0, playlistURI.toURL().toString().lastIndexOf("/") + 1) + location);
+            String resolved = resolveURI(location, playlistURI);
+            if (resolved == null) {
+                throw new URISyntaxException(location, "Unsupported protocol");
             }
+            return new URI(resolved);
         }
 
         private Playlist getPlaylistBasedOnBitrate(int bitrate) {
@@ -751,8 +773,6 @@ final class HLSConnectionHolder extends ConnectionHolder {
         private final List<String> mediaFiles = new ArrayList<>();
         private final List<Double> mediaFilesStartTimes = new ArrayList<>();
         private final List<Boolean> mediaFilesDiscontinuities = new ArrayList<>();
-        private boolean needBaseURI = true;
-        private String baseURI = null;
         private double startTime = 0.0;
         private double duration = 0.0;
         private int sequenceNumber = -1;
@@ -820,16 +840,20 @@ final class HLSConnectionHolder extends ConnectionHolder {
             playlistURI = uri;
         }
 
-        private void addMediaFile(String URI, double duration, boolean isDiscontinuity) {
+        private void addMediaFile(String uri, double duration, boolean isDiscontinuity) {
             synchronized (lock) {
 
-                if (needBaseURI) {
-                    setBaseURI(playlistURI.toString(), URI);
+                try {
+                    uri = resolveURI(uri, playlistURI);
+                    if (uri == null) {
+                        return;
+                    }
+                } catch (URISyntaxException | MalformedURLException e) {
+                    return;
                 }
-
                 if (isLive) {
                     if (sequenceNumberUpdated) {
-                        int index = mediaFiles.indexOf(URI);
+                        int index = mediaFiles.indexOf(uri);
                         if (index != -1) {
                             for (int i = 0; i < index; i++) {
                                 mediaFiles.remove(0);
@@ -845,12 +869,12 @@ final class HLSConnectionHolder extends ConnectionHolder {
                         sequenceNumberUpdated = false;
                     }
 
-                    if (mediaFiles.contains(URI)) {
+                    if (mediaFiles.contains(uri)) {
                         return; // Nothing to add
                     }
                 }
 
-                mediaFiles.add(URI);
+                mediaFiles.add(uri);
                 mediaFilesDiscontinuities.add(isDiscontinuity);
 
                 if (isLive) {
@@ -900,11 +924,7 @@ final class HLSConnectionHolder extends ConnectionHolder {
             synchronized (lock) {
                 mediaFileIndex++;
                 if (mediaFileIndex < mediaFiles.size()) {
-                    if (baseURI != null) {
-                        return baseURI + mediaFiles.get(mediaFileIndex);
-                    } else {
-                        return mediaFiles.get(mediaFileIndex);
-                    }
+                    return mediaFiles.get(mediaFileIndex);
                 } else {
                     return null;
                 }
@@ -914,11 +934,7 @@ final class HLSConnectionHolder extends ConnectionHolder {
         private String getHeaderFile() {
             synchronized (lock) {
                 if (mediaFiles.size() > 0) {
-                    if (baseURI != null) {
-                        return baseURI + mediaFiles.get(0);
-                    } else {
-                        return mediaFiles.get(0);
-                    }
+                    return mediaFiles.get(0);
                 } else {
                     return null;
                 }
@@ -1057,11 +1073,5 @@ final class HLSConnectionHolder extends ConnectionHolder {
             }
         }
 
-        private void setBaseURI(String playlistURI, String URI) {
-            if (!URI.startsWith("http://") && !URI.startsWith("https://")) {
-                baseURI = playlistURI.substring(0, playlistURI.lastIndexOf("/") + 1);
-            }
-            needBaseURI = false;
-        }
     }
 }

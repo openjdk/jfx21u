@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,9 @@ enum
     PROP_CODEC_ID,
     PROP_IS_SUPPORTED,
 };
+
+// Nalu length size in bytes
+#define NALU_LENGTH_SIZE 4
 
 enum
 {
@@ -357,12 +360,14 @@ static void mfwrapper_set_src_caps(GstMFWrapper *decoder)
     }
 }
 
-static void mfwrapper_nalu_to_start_code(BYTE *pbBuffer, gsize size)
+// Return S_FALSE if we fail to convert. S_FALSE is not critical error,
+// but will signal caller, that something is wrong with buffer.
+static HRESULT mfwrapper_nalu_to_start_code(BYTE *pbBuffer, gsize size)
 {
-    gint leftSize = size;
+    gsize leftSize = size;
 
-    if (pbBuffer == NULL || size < 4)
-        return;
+    if (pbBuffer == NULL || size < NALU_LENGTH_SIZE)
+        return S_FALSE;
 
     do
     {
@@ -371,18 +376,22 @@ static void mfwrapper_nalu_to_start_code(BYTE *pbBuffer, gsize size)
         naluLen |= ((guint)*(guint8*)(pbBuffer + 2)) << 8;
         naluLen |= ((guint)*(guint8*)(pbBuffer + 3));
 
-        if (naluLen <= 1) // Start code or something wrong
-            return;
+        // Start code or something wrong.
+        // naluLen cannot be more then data we have to process.
+        if (naluLen <= 1 || naluLen > (leftSize - NALU_LENGTH_SIZE))
+            return S_FALSE;
 
         pbBuffer[0] = 0x00;
         pbBuffer[1] = 0x00;
         pbBuffer[2] = 0x00;
         pbBuffer[3] = 0x01;
 
-        leftSize -= (naluLen + 4);
-        pbBuffer += (naluLen + 4);
+        leftSize -= (naluLen + NALU_LENGTH_SIZE);
+        pbBuffer += (naluLen + NALU_LENGTH_SIZE);
 
-    } while (leftSize > 0);
+    } while (leftSize > NALU_LENGTH_SIZE);
+
+    return leftSize == 0 ? S_OK : S_FALSE;
 }
 
 static gboolean mfwrapper_process_input(GstMFWrapper *decoder, GstBuffer *buf)
@@ -392,6 +401,7 @@ static gboolean mfwrapper_process_input(GstMFWrapper *decoder, GstBuffer *buf)
     DWORD dwBufferSize = 0;
     BYTE *pbBuffer = NULL;
     GstMapInfo info;
+    HRESULT hrDeliverBuffer = S_OK;
     gboolean unmap_buf = FALSE;
     gboolean unlock_buf = FALSE;
 
@@ -445,7 +455,7 @@ static gboolean mfwrapper_process_input(GstMFWrapper *decoder, GstBuffer *buf)
             if (dwBufferSize >= info.size)
             {
                 memcpy_s(pbBuffer, dwBufferSize, info.data, info.size);
-                mfwrapper_nalu_to_start_code(pbBuffer, info.size);
+                hrDeliverBuffer = mfwrapper_nalu_to_start_code(pbBuffer, info.size);
             }
             else
             {
@@ -460,7 +470,7 @@ static gboolean mfwrapper_process_input(GstMFWrapper *decoder, GstBuffer *buf)
     else if (SUCCEEDED(hr))
     {
         memcpy_s(pbBuffer, dwBufferSize, info.data, info.size);
-        mfwrapper_nalu_to_start_code(pbBuffer, info.size);
+        hrDeliverBuffer = mfwrapper_nalu_to_start_code(pbBuffer, info.size);
     }
 
     if (decoder->header != NULL)
@@ -476,11 +486,14 @@ static gboolean mfwrapper_process_input(GstMFWrapper *decoder, GstBuffer *buf)
     if (unmap_buf)
         gst_buffer_unmap(buf, &info);
 
-    if (SUCCEEDED(hr))
+    // mfwrapper_nalu_to_start_code() can return S_FALSE, so deliver
+    // buffer only if we have S_OK.
+    if (SUCCEEDED(hr) && hrDeliverBuffer == S_OK)
+    {
         hr = pSample->AddBuffer(pBuffer);
-
-    if (SUCCEEDED(hr))
-        hr = decoder->pDecoder->ProcessInput(0, pSample, 0);
+        if (SUCCEEDED(hr))
+            hr = decoder->pDecoder->ProcessInput(0, pSample, 0);
+    }
 
     gst_buffer_unref(buf);
 

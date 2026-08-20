@@ -61,7 +61,7 @@ class CCTask extends NativeCompileTask {
                     stripped.remove("-std=c99");
                     args(stripped)
                 } else {
-                    spec.args(new ArrayList<String>(params));
+                    args(new ArrayList<String>(params));
                 }
             };
 

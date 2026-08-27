@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,16 +26,17 @@
 package com.sun.webkit;
 
 import com.sun.javafx.reflect.MethodUtil;
+import com.sun.javafx.reflect.ReflectUtil;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import com.sun.javafx.reflect.ReflectUtil;
 
 /**
- * Utility class to wrap method invocation.
+ * Utility class to wrap method and field invocations.
  */
-public class MethodHelper {
+public class ReflectionHelper {
     @SuppressWarnings("removal")
     private static final boolean logAccessErrors
             = AccessController.doPrivileged((PrivilegedAction<Boolean>) ()
@@ -43,7 +44,7 @@ public class MethodHelper {
 
     private static final Module trampolineModule = MethodUtil.getTrampolineModule();
 
-    public static Object invoke(Method m, Object obj, Object[] params)
+    private static void ensureModuleAccess(Class<?> clazz, boolean useTrampoline)
             throws InvocationTargetException, IllegalAccessException {
 
         // Check that the class in question is in a package that is open to
@@ -51,10 +52,9 @@ public class MethodHelper {
         // the containing package to the unnamed trampoline module. If not,
         // we will throw an IllegalAccessException in order to generate a
         // clearer error message.
-        final Class<?> clazz = m.getDeclaringClass();
         final String packageName = clazz.getPackage().getName();
         final Module module = clazz.getModule();
-        final Module thisModule = MethodHelper.class.getModule();
+        final Module thisModule = ReflectionHelper.class.getModule();
         try {
             // Verify that the module being called either exports the package
             // in question unconditionally or opens the package in question to
@@ -69,7 +69,7 @@ public class MethodHelper {
                             + " does not open " + packageName
                             + " to " + thisModule.getName());
                 }
-                if (!module.isOpen(packageName, trampolineModule)) {
+                if (useTrampoline && !module.isOpen(packageName, trampolineModule)) {
                     ReflectUtil.checkPackageAccess(packageName);
                     module.addOpens(packageName, trampolineModule);
                 }
@@ -80,12 +80,34 @@ public class MethodHelper {
             }
             throw ex;
         }
+    }
 
+    public static Object invoke(Method m, Object obj, Object[] params)
+            throws InvocationTargetException, IllegalAccessException {
+
+        final Class<?> clazz = m.getDeclaringClass();
+        ReflectionHelper.ensureModuleAccess(clazz, true);
         return MethodUtil.invoke(m, obj, params);
     }
 
+    public static Object get(Field f, Object obj)
+            throws InvocationTargetException, IllegalAccessException {
+
+        final Class<?> clazz = f.getDeclaringClass();
+        ReflectionHelper.ensureModuleAccess(clazz, false);
+        return f.get(obj);
+    }
+
+    public static void set(Field f, Object obj, Object value)
+            throws InvocationTargetException, IllegalAccessException {
+
+        final Class<?> clazz = f.getDeclaringClass();
+        ReflectionHelper.ensureModuleAccess(clazz, false);
+        f.set(obj, value);
+    }
+
     // Utility class, do not instantiate
-    private MethodHelper() {
+    private ReflectionHelper() {
     }
 
 }
